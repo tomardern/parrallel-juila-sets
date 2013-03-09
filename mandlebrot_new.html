@@ -1,0 +1,484 @@
+
+<!DOCTYPE html PUBLIC>
+<html>
+<head>
+
+
+<title>Nihilogic : Javascript Fractals</title>
+
+<!-- FROM -->
+<!-- http://www.nihilogic.dk/labs/javascript_canvas_fractals/ -->
+
+
+</head>
+<body>
+
+
+
+<canvas id="mandelbrot" style="border:1px solid black;"></canvas> <br />
+
+<script type="text/javascript">
+
+var w = 200;
+var h = 200;
+var scale = 1;
+
+var antialias = false;
+var algo = "julia1";
+
+var canvas = document.getElementById("mandelbrot");
+canvas.width = w;
+canvas.height = h;
+canvas.style.width = scale*canvas.width+"px";
+canvas.style.height = scale*canvas.height+"px";
+
+var ctx = canvas.getContext("2d");
+
+
+var vx = 0;
+var vy = 0;
+var zoom = 1;
+var zoomFactor = 2;
+var startit = 30;
+var xmin, xmax, ymin, ymax, dx, dy;
+var er = 2;
+
+var colors = {
+	bw : []
+};
+var color = "bw";
+
+
+var log2 = 1 / Math.log(2.0);
+var sin = Math.sin;
+var cos = Math.cos;
+var exp = Math.exp;
+var phi = 1.6180339887;
+
+
+var fractals = {
+
+	julia_base : function(x, y, it, er2, cr, ci) {
+		var xx = x*x, yy = y*y;
+		do {
+			y = (x+x)*y + ci;
+			x = xx - yy + cr;
+			yy = y*y;
+			xx = x*x;
+
+			if (xx+yy > er2) {
+				y = (x+x)*y + ci;
+				x = xx - yy + cr;
+				yy = y*y;
+				xx = x*x;
+
+				break;
+			}
+		} while(--it)
+		return {
+			it : it, x : x, y : y, xx : xx, yy : yy
+		};
+	},
+
+	julia1 : function(x, y, it, er2) {
+		return fractals["julia_base"](x, y, it, er2, phi - 2, phi - 1);
+	},
+
+	julia2 : function(x, y, it, er2) {
+		return fractals["julia_base"](x, y, it, er2, 1-phi, 0);
+	},
+
+	julia3 : function(x, y, it, er2) {
+		return fractals["julia_base"](x, y, it, er2, 0.285, 0);
+	},
+
+	julia4 : function(x, y, it, er2) {
+		return fractals["julia_base"](x, y, it, er2, 0.285, 0.01);
+	},
+
+	julia5 : function(x, y, it, er2) {
+		return fractals["julia_base"](x, y, it, er2, -0.835, -0.2321);
+	},
+
+	julia6 : function(x, y, it, er2) {
+		return fractals["julia_base"](x, y, it, er2, -0.7, -0.3);
+	},
+
+	julia7 : function(x, y, it, er2) {
+		return fractals["julia_base"](x, y, it, er2, 0, 1);
+	},
+
+	julia8 : function(x, y, it, er2) {
+		return fractals["julia_base"](x, y, it, er2, -0.391, -0.587);
+	},
+
+	julia9 : function(x, y, it, er2) {
+		return fractals["julia_base"](x, y, it, er2, -0.123, 0.745);
+	},
+
+	julia10 : function(x, y, it, er2) {
+		return fractals["julia_base"](x, y, it, er2, -0.75, 0);
+	},
+
+	julia11 : function(x, y, it, er2) {
+		var zr, zi;
+		var cr = 0.6;
+		var ci = 1.1;
+		var xx = x*x, yy = y*y;
+		do {
+			zr = x - (x?(x<0?-1:1):0);
+			zi = y;
+			x = cr*zr-ci*zi;
+			y = cr*zi+ci*zr;
+			yy = y*y;
+			xx = x*x;
+			if (xx+yy > er2)
+				break;
+		} while(--it)
+		return {
+			it : it, x : x, y : y, xx : xx, yy : yy
+		};
+	},
+
+	juliasine_base : function(x, y, it, er2, cr, ci) {
+		var xx = x*x, yy = y*y;
+		var z, expy, expmy;
+		var c = [cr, ci];
+		do {
+			//z = csin(x,y);
+			expy = exp(y);
+			expmy = exp(-y);
+			z = [sin(x) * (expy + expmy)/2, cos(x) * (expy - expmy)/2];
+
+			x = c[0]*z[0]-c[1]*z[1];
+			y = c[0]*z[1]+c[1]*z[0];
+
+			yy = y*y, xx = x*x;
+			if (xx+yy > 500)
+				break;
+		} while(--it)
+		return {
+			it : it, x : x, y : y, xx : xx, yy : yy
+		};
+	},
+
+	juliasine : function(x, y, it, er2) {
+		return fractals["juliasine_base"](x, y, it, er2, 1, 0.1);
+	},
+
+	juliasine2 : function(x, y, it, er2) {
+		return fractals["juliasine_base"](x, y, it, er2, 1, 0.3);
+	},
+
+	juliacosine_base : function(x, y, it, er2, cr, ci) {
+		var xx = x*x, yy = y*y;
+		var z, expy, expmy;
+		var c = [cr, ci];
+		do {
+			//z = ccos(x,y);
+			expy = exp(y);
+			expmy = exp(-y);
+			z = [cos(x) * (expy + expmy)/2, -sin(x) * (expy - expmy)/2];
+
+			x = c[0]*z[0]-c[1]*z[1];
+			y = c[0]*z[1]+c[1]*z[0];
+
+			yy = y*y, xx = x*x;
+			if (xx+yy > 500)
+				break;
+		} while(--it)
+		return {
+			it : it, x : x, y : y, xx : xx, yy : yy
+		};
+	},
+
+	juliacosine : function(x, y, it, er2) {
+		return fractals["juliacosine_base"](x, y, it, er2, 1, 0.6);
+	},
+
+	juliacosine2 : function(x, y, it, er2) {
+		return fractals["juliacosine_base"](x, y, it, er2, Math.PI/2 * 1.5, Math.PI/2 * 0.05);
+	},
+
+	juliacosine3 : function(x, y, it, er2) {
+		var xx = x*x, yy = y*y;
+		var z, expy, expmy;
+		var c = [1, 0.1];
+		do {
+			//z = ccos(x,y);
+			expy = exp(y);
+			expmy = exp(-y);
+			z = [cos(x) * (expy + expmy)/2, -sin(x) * (expy - expmy)/2];
+
+			x = c[0]*z[0]-c[1]*z[1];
+			y = c[0]*z[1]+c[1]*z[0];
+
+			tx = x;
+			x = -y;
+			y = tx;
+
+			yy = y*y, xx = x*x;
+			if (xx+yy > 500)
+				break;
+		} while(--it)
+		return {
+			it : it, x : x, y : y, xx : xx, yy : yy
+		};
+	},
+
+}
+
+
+
+function render() {
+	var start = new Date().getTime();
+
+	ctx.fillStyle = "#000000";
+	ctx.fillRect(0,0,w,h);
+
+	var data = ctx.getImageData(0,0,w,h);
+
+	var mi = Math.max(startit, Math.round(Math.max(Math.log(zoom),1) * startit));
+	var itfac = 1/mi*startit
+
+	xmin = vx - 2/zoom;
+	xmax = vx + 2/zoom;
+	ymin = vy - 2/zoom;
+	ymax = vy + 2/zoom;
+
+	dx = xmax-xmin;
+	dy = ymax-ymin;
+
+	var px, py, it;
+
+	var er2 = er*er;
+
+	var fncFrac = fractals[algo];
+
+	var colWeights = colors[color];
+	var c1, c2, c3, m;
+	var col1, col2, col3;
+	var cw0 = colWeights[0], cw1 = colWeights[1], cw2 = colWeights[2];
+
+
+
+
+	//Data.data is the image data. We are over-writing this data
+	imgData = data;
+	max = w * h;
+
+	cores = 4;
+
+	each = (max / cores);
+
+
+
+	var data1 = ctx.getImageData(0,0,w,h);
+
+	for(var j = 0; j < cores; j++){
+		start = (j * each );
+		end = start + each;
+
+		data = between(start,end);
+		console.log(j + " " + start + "to" + end);
+		for(at in data){
+			data1.data[at] = data[at];
+		}
+		ctx.putImageData(data1,0,0);
+
+	}
+
+
+
+
+
+
+	//data = between(0,15000,data);
+
+
+	//ctx.putImageData(data,0,0);
+
+
+	function between(start,end){
+		data = {};
+		for(i = start; i< end; i ++) {
+			var offset = i*4;
+
+			px = (i %w );
+			py = h - ((i/w) | 0);
+
+			var res = fncFrac(
+				xmin + px/w * dx,
+				ymin + py/h * dy,
+				mi, er2
+			);
+
+			it = mi - res.it;
+
+			var mag =  it * itfac;
+
+			if (color == "bw") {
+				c1 = c2 = c3 =
+					(res.it==mi) ? 255 : 255 - mag/startit * 255;
+			}
+			c1 = c1 < 0 ? 0 : c1;
+			c2 = c2 < 0 ? 0 : c2;
+			c3 = c3 < 0 ? 0 : c3;
+
+			c1 = c1 > 255 ? 255 : c1;
+			c2 = c2 > 255 ? 255 : c2;
+			c3 = c3 > 255 ? 255 : c3;
+
+			data[offset] = c1;
+			data[offset+1] = c2;
+			data[offset+2] = c3;
+		}
+
+		return data;
+	}
+
+
+
+
+
+
+
+	var end = new Date().getTime();
+	console.log("taken", (end-start));
+}
+
+function getElementPos(el) {
+	var x = -(document.body.scrollLeft+document.documentElement.scrollLeft),
+		y = -(document.body.scrollTop+document.documentElement.scrollTop);
+	while (el && el.nodeName != "BODY") {
+		x += el.offsetLeft;
+		y += el.offsetTop;
+		el = el.offsetParent;
+	}
+	return {
+		x : x,
+		y : y
+	}
+}
+
+canvas.onclick = function(e) {
+	var pos = getElementPos(canvas)
+	var mx = e.clientX - pos.x;
+	var my = e.clientY - pos.y;
+
+	var fx = mx / (w*scale);
+	var fy = my / (h*scale);
+
+	vx = xmin + dx*fx;
+	vy = ymax - fy*dy;
+
+	zoom *= zoomFactor;
+
+	render();
+}
+
+
+
+function onScreenSizeChange(sel) {
+	var opt = sel.options[sel.selectedIndex];
+
+	w = h = parseInt(opt.value,10);
+	canvas.width = w;
+	canvas.height = h;
+	canvas.style.width = scale*canvas.width+"px";
+	canvas.style.height = scale*canvas.height+"px";
+	render();
+}
+
+
+function onZoomFactorChange(sel) {
+	var opt = sel.options[sel.selectedIndex];
+	zoomFactor = parseFloat(opt.value);
+}
+
+
+function onAntialiasChange(sel) {
+	antialias = !!parseInt(sel.options[sel.selectedIndex].value,10);
+	render();
+}
+
+function onEscapeRadiusChange(sel) {
+	er = parseInt(sel.options[sel.selectedIndex].value,10);
+	render();
+}
+
+function onColorChange(sel) {
+	color = sel.options[sel.selectedIndex].value;
+	render();
+}
+
+function onAlgorithmChange(sel) {
+	algo = sel.options[sel.selectedIndex].value;
+	vx = vy = 0;
+	zoom = 1;
+	switch (algo) {
+		case "juliasine" :
+		case "juliasine2" :
+		case "juliacosine" :
+		case "juliacosine2" :
+		case "juliacosine3" :
+		case "julia11":
+			zoom = 0.5;
+			break;
+		default :
+			zoom = 1;
+	}
+	render();
+}
+
+</script>
+
+
+<select onchange="onAlgorithmChange(this);" style="height:100px;width:298px;" size=8>
+ <option value="julia1" selected="selected">Julia Set #1, c = (phi-2, phi-1)</option>
+ <option value="julia2">Julia Set #2, c = (1-phi, 0)</option>
+ <option value="julia3">Julia Set #3, c = (0.285, 0)</option>
+ <option value="julia4">Julia Set #4, c = (0.285, 0.01)</option>
+ <option value="julia5">Julia Set #5, c = (-0.835, -0.2321)</option>
+ <option value="julia6">Julia Set #6, c = (-0.835, -0.2321)</option>
+  <option value="juliasine">Julia Sine #1 - c*sin(z), c = (1, 0.1)</option>
+ <option value="juliasine2">Julia Sine #2 - c*sin(z), c = (1, 0.3)</option>
+ <option value="juliacosine">Julia Cosine #1 - c*cos(z), c = (1, -0.5)</option>
+ <option value="juliacosine2">Julia Cosine #2 - c*cos(z), c = (pi/2 * 1.5, pi/2 * 0.05)</option>
+ <option value="juliacosine3">Julia Cosine #3 - c*i*cos(z), c = (1, 0.1)</option>
+</select>
+<br>
+
+
+Image size: <select onchange="onScreenSizeChange(this);">
+ <option value="100">100x100</option>
+ <option value="200" selected>200x200</option>
+ <option value="300">300x300</option>
+ <option value="400">400x400</option>
+ <option value="1000">1000x1000</option>
+</select>
+<br>
+Color scheme: <select onchange="onColorChange(this);">
+ <option value="bw" selected>Black/white</option>
+ <option value="red">Red</option>
+ <option value="green">Green</option>
+ <option value="blue">Blue</option>
+ <option value="magenta">Magenta</option>
+ <option value="orange">Orange</option>
+ <option value="yellow">Yellow</option>
+</select>
+<br>
+On-click Zoom factor: <select onchange="onZoomFactorChange(this);">
+ <option value="0.1">0.1</option>
+ <option value="0.5">0.5</option>
+ <option value="1">1 (no zoom)</option>
+ <option value="2" selected>2</option>
+ <option value="5">5</option>
+ <option value="10">10</option>
+ <option value="100">100</option>
+</select>
+<br>
+
+</body>
+
+</html>
