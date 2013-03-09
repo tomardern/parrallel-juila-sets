@@ -1,4 +1,3 @@
-
 <!DOCTYPE html PUBLIC>
 <html>
 <head>
@@ -15,285 +14,240 @@
 
 
 
-<canvas id="mandelbrot" style="border:1px solid black;"></canvas> <br />
+<canvas id="mandelbrot"></canvas>
+<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.min.js"></script>
 
-<script type="text/javascript" src="fractals.class.js" ></script>
+
+<script type="text/javascript" src="julia.js" ></script>
 
 <script type="text/javascript" src="underscore.min.js" ></script>
 <script type="text/javascript" src="parallel.min.js" ></script>
 
 
+<style>
+html, body {
+	width: 100%;
+	height: 100%;
+	position: relative;
+}
+canvas {
+	position: absolute;
+	top: 0px;
+	left: 0px;
+}
+
+.controls {
+	position: absolute;
+	top: 0px;
+	left: 0px;
+	background: rgba(117, 117, 117, 0.81);
+	padding: 10px;
+}
+
+
+</style>
+
+
+
+
 
 <script type="text/javascript">
-
-var w = 200;
-var h = 200;
-var scale = 1;
-
-var antialias = false;
-var algo = "julia1";
-
-var canvas = document.getElementById("mandelbrot");
-canvas.width = w;
-canvas.height = h;
-canvas.style.width = scale*canvas.width+"px";
-canvas.style.height = scale*canvas.height+"px";
-
-var ctx = canvas.getContext("2d");
-
-
-var vx = 0;
-var vy = 0;
-var zoom = 1;
-var zoomFactor = 2;
-var startit = 30;
-var xmin, xmax, ymin, ymax, dx, dy;
-
-
-var colors = {
-	bw : []
-};
-var color = "bw";
-
-
-
-
-function render() {
-	var start = new Date().getTime();
-
-	ctx.fillStyle = "#000000";
-	ctx.fillRect(0,0,w,h);
-
-	var data = ctx.getImageData(0,0,w,h);
-
-	//startit was 30
-	var mi = Math.max(30, Math.round(Math.max(Math.log(zoom),1) * 30));
-	var itfac = 1/mi*30;
-
-	xmin = vx - 2/zoom;
-	xmax = vx + 2/zoom;
-	ymin = vy - 2/zoom;
-	ymax = vy + 2/zoom;
-
-	dx = xmax-xmin;
-	dy = ymax-ymin;
-
-
-	var fncFrac = fractals[algo];
-
-	var colWeights = colors[color];
-
-	var col1, col2, col3;
-	var cw0 = colWeights[0], cw1 = colWeights[1], cw2 = colWeights[2];
-
-	//Data.data is the image data. We are over-writing this data
-	imgData = data;
-
-	cores = 4;
-	each = ((w * h) / cores);
-
-
-	//ctx.putImageData(data,0,0);
-	function between(start, end, mi, itfac, w, h, fncFrac,dx,dy){
-		data = {};
-		var px, py, it;
-		var c1, c2, c3, m;
-
-
-		for(i = start; i < end; i ++) {
-			var offset = i*4;
-
-			px = (i % w );
-			py = h - ((i/w) | 0);
-
-			var res = fncFrac(
-				xmin + px/w * dx,
-				ymin + py/h * dy,
-				mi
-			);
-
-			it = mi - res.it;
-
-			var mag =  it * itfac;
-
-			c1 = c2 = c3 = (res.it==mi) ? 255 : 255 - mag/30 * 255;
-			c1 = c1 < 0 ? 0 : c1;
-			c2 = c2 < 0 ? 0 : c2;
-			c3 = c3 < 0 ? 0 : c3;
-
-			c1 = c1 > 255 ? 255 : c1;
-			c2 = c2 > 255 ? 255 : c2;
-			c3 = c3 > 255 ? 255 : c3;
-
-			data[offset] = c1;
-			data[offset+1] = c2;
-			data[offset+2] = c3;
-		}
-
-		return data;
-	}
-
-
-
-
-	var data1 = ctx.getImageData(0,0,w,h);
-
-	para = [];
-
-	for(var j = 0; j < cores; j++){
-		start = (j * each );
-		end = start + each;
-
-
-		result = between(start, end, mi, itfac, w, h, fncFrac,dx,dy);
-		for(at in result){
-			data1.data[at] = result[at];
-		}
-		console.log("done");
-		ctx.putImageData(data1,0,0);
-
-
-		/* para[j] = Parallel.spawn(start, end, mi, itfac, w, h, px, py, fncFrac, er2);
-
-		// Fetch the remote reference and log the result when it's complete
-		para[j].fetch(function (result) {
-			for(at in result){
-				data1.data[at] = result[at];
-			}
-			console.log(result);
-			console.log("done");
-			ctx.putImageData(data1,0,0);
-		}); */
-
-	}
-
-
-
-
-
-
-	//data = between(0,15000,data);
-
-
-
-
-
-
-
-
-
-	var end = new Date().getTime();
-	console.log("taken", (end-start));
-}
-
-/* --------------------------------------------------
-User Interface Stuff , on clicks etc
------------------------------------------------------*/
-function getElementPos(el) {
-	var x = -(document.body.scrollLeft+document.documentElement.scrollLeft),
-		y = -(document.body.scrollTop+document.documentElement.scrollTop);
-	while (el && el.nodeName != "BODY") {
-		x += el.offsetLeft;
-		y += el.offsetTop;
-		el = el.offsetParent;
-	}
-	return {
-		x : x,
-		y : y
-	}
-}
-
-canvas.onclick = function(e) {
-	var pos = getElementPos(canvas)
-	var mx = e.clientX - pos.x;
-	var my = e.clientY - pos.y;
-
-	var fx = mx / (w*scale);
-	var fy = my / (h*scale);
-
-	vx = xmin + dx*fx;
-	vy = ymax - fy*dy;
-
-	zoom *= zoomFactor;
-
-	render();
-}
-
-
-
-function onScreenSizeChange(sel) {
-	var opt = sel.options[sel.selectedIndex];
-
-	w = h = parseInt(opt.value,10);
+$(document).ready(function(){
+	var w = 200;
+	var h = 200;
+	var scale = 1;
+
+	var antialias = false;
+	var algo = "julia1";
+
+	var canvas = document.getElementById("mandelbrot");
 	canvas.width = w;
 	canvas.height = h;
 	canvas.style.width = scale*canvas.width+"px";
 	canvas.style.height = scale*canvas.height+"px";
-	render();
-}
+
+	var ctx = canvas.getContext("2d");
 
 
-function onZoomFactorChange(sel) {
-	var opt = sel.options[sel.selectedIndex];
-	zoomFactor = parseFloat(opt.value);
-}
+	var vx = 0;
+	var vy = 0;
+	var zoom = 1;
+	var zoomFactor = 2;
 
 
-function onAntialiasChange(sel) {
-	antialias = !!parseInt(sel.options[sel.selectedIndex].value,10);
-	render();
-}
+	var colors = {
+		bw : []
+	};
+	var color = "bw";
 
 
-function onColorChange(sel) {
-	color = sel.options[sel.selectedIndex].value;
-	render();
-}
 
-function onAlgorithmChange(sel) {
-	algo = sel.options[sel.selectedIndex].value;
-	vx = vy = 0;
-	zoom = 1;
-	render();
-}
+
+	function render() {
+		ctx.fillStyle = "#000000";
+		ctx.fillRect(0,0,w,h);
+
+		var data = ctx.getImageData(0,0,w,h);
+
+		//startit was 30
+		var mi = Math.max(30, Math.round(Math.max(Math.log(zoom),1) * 30));
+		var itfac = 1/mi*30;
+
+		xmin = vx - 2/zoom;
+		xmax = vx + 2/zoom;
+		ymin = vy - 2/zoom;
+		ymax = vy + 2/zoom;
+
+		dx = xmax-xmin;
+		dy = ymax-ymin;
+
+
+		var colWeights = colors[color];
+
+		var col1, col2, col3;
+		var cw0 = colWeights[0], cw1 = colWeights[1], cw2 = colWeights[2];
+
+		//Data.data is the image data. We are over-writing this data
+		imgData = data;
+
+		cores = 4;
+		each = ((w * h) / cores);
+
+
+		var data1 = ctx.getImageData(0,0,w,h);
+
+		para = [];
+
+		isParrallel = $("#parallel").attr("checked") == "checked";
+
+
+		window.startTime = new Date().getTime();
+		for(var j = 0; j < cores; j++){
+			start = (j * each );
+			end = start + each;
+
+			//Parameters to pass
+			pass = {start:start,end:end,mi: mi,itfac: itfac,w: w,h: h,dx: dx,dy: dy,xmin: xmin,ymin: ymin};
+
+			if (!isParrallel) {
+				result = julia(pass);
+				for(at in result){
+					data1.data[at] = result[at];
+				}
+				var end = new Date().getTime();
+				console.log("Done:", end - window.startTime);
+				ctx.putImageData(data1,0,0);
+			} else {
+
+
+
+				para[j] = Parallel.spawn(julia, pass);
+				para[j].me = j;
+
+				// Fetch the remote reference and log the result when it's complete
+				para[j].fetch(function (result) {
+					for(at in result){
+						data1.data[at] = result[at];
+					}
+					ctx.putImageData(data1,0,0);
+
+					var end = new Date().getTime();
+					console.log("Done:", end - window.startTime);
+
+
+				});
+			}
+		}
+	}
+
+
+
+
+
+	/* --------------------------------------------------
+	User Interface Stuff , on clicks etc
+	-----------------------------------------------------*/
+	function getElementPos(el) {
+		var x = -(document.body.scrollLeft+document.documentElement.scrollLeft),
+			y = -(document.body.scrollTop+document.documentElement.scrollTop);
+		while (el && el.nodeName != "BODY") {
+			x += el.offsetLeft;
+			y += el.offsetTop;
+			el = el.offsetParent;
+		}
+		return {
+			x : x,
+			y : y
+		}
+	}
+
+	canvas.onclick = function(e) {
+		var pos = getElementPos(canvas)
+		var mx = e.clientX - pos.x;
+		var my = e.clientY - pos.y;
+
+		var fx = mx / (w*scale);
+		var fy = my / (h*scale);
+
+		vx = xmin + dx*fx;
+		vy = ymax - fy*dy;
+
+		zoom *= zoomFactor;
+
+		render();
+	}
+
+
+	$("button").click(function(){
+
+
+		size = $("#size").val();
+
+		w = h = parseInt(size,10);
+		canvas.width = w;
+		canvas.height = h;
+		canvas.style.width = scale*canvas.width+"px";
+		canvas.style.height = scale*canvas.height+"px";
+		render();
+
+	});
+
+
+
+
+
+
+
+	function onZoomFactorChange(sel) {
+		var opt = sel.options[sel.selectedIndex];
+		zoomFactor = parseFloat(opt.value);
+	}
+
+
+
+	function onAlgorithmChange(sel) {
+		algo = sel.options[sel.selectedIndex].value;
+		vx = vy = 0;
+		zoom = 1;
+		render();
+	}
+
+
+
+
+
+
+});
 
 </script>
 
 
-<select onchange="onAlgorithmChange(this);" style="height:100px;width:298px;" size=8>
- <option value="julia1" selected="selected">Julia Set #1, c = (this.phi-2, this.phi-1)</option>
- <option value="julia2">Julia Set #2, c = (1-this.phi, 0)</option>
- <option value="julia3">Julia Set #3, c = (0.285, 0)</option>
- <option value="julia4">Julia Set #4, c = (0.285, 0.01)</option>
- <option value="julia5">Julia Set #5, c = (-0.835, -0.2321)</option>
- <option value="julia6">Julia Set #6, c = (-0.835, -0.2321)</option>
-  <option value="juliasine">Julia Sine #1 - c*sin(z), c = (1, 0.1)</option>
- <option value="juliasine2">Julia Sine #2 - c*sin(z), c = (1, 0.3)</option>
- <option value="juliacosine">Julia Cosine #1 - c*cos(z), c = (1, -0.5)</option>
- <option value="juliacosine2">Julia Cosine #2 - c*cos(z), c = (pi/2 * 1.5, pi/2 * 0.05)</option>
- <option value="juliacosine3">Julia Cosine #3 - c*i*cos(z), c = (1, 0.1)</option>
-</select>
-<br>
 
 
-Image size: <select onchange="onScreenSizeChange(this);">
- <option value="100">100x100</option>
- <option value="200" selected>200x200</option>
- <option value="300">300x300</option>
- <option value="400">400x400</option>
- <option value="1000">1000x1000</option>
-</select>
+<div class="controls">
+Image size: <input value="400" id="size">
 <br>
-Color scheme: <select onchange="onColorChange(this);">
- <option value="bw" selected>Black/white</option>
- <option value="red">Red</option>
- <option value="green">Green</option>
- <option value="blue">Blue</option>
- <option value="magenta">Magenta</option>
- <option value="orange">Orange</option>
- <option value="yellow">Yellow</option>
-</select>
-<br>
+
 On-click Zoom factor: <select onchange="onZoomFactorChange(this);">
  <option value="0.1">0.1</option>
  <option value="0.5">0.5</option>
@@ -304,6 +258,10 @@ On-click Zoom factor: <select onchange="onZoomFactorChange(this);">
  <option value="100">100</option>
 </select>
 <br>
+<input type="checkbox" id="parallel" />Parallel
+<br>
+<button value="go" />Go!</button>
+</div>
 
 </body>
 
