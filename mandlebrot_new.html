@@ -137,20 +137,20 @@ $(document).ready(function(){
 				}
 				var end = new Date().getTime();
 				console.log("Done:", result.core ,end - window.startTime);
-				ctx.putImageData(data1,0,0);
+				//ctx.putImageData(data1,0,0);
 			} else {
 
 
 
-				para[j] = Parallel.spawn(julia, pass);
-				para[j].me = j;
+				r = Parallel.spawn(julia, pass);
+				r.me = j;
 
 				// Fetch the remote reference and log the result when it's complete
-				para[j].fetch(function (result) {
+				r.fetch(function (result) {
 					for(at in result.data){
 						data1.data[at] = result.data[at];
 					}
-					ctx.putImageData(data1,0,0);
+					//ctx.putImageData(data1,0,0);
 
 					var end = new Date().getTime();
 					console.log("Done:", result.core, end - window.startTime);
