@@ -1,5 +1,16 @@
-function test(attr){
+// "queenSocket" is a global variable that scripts running on queen have
+// access to. It's the only variable introduced to this scope. This script
+// will execute in it's own iframe so the global context is clean otherwise.
 
+// The "onMessage" property allows the client-side script to listen
+// to messages from the server-side script. In this case we're assuming
+// the server script will only send us one message, and it'll be an integer
+// for the maximum number we're should guess.
+queenSocket.onMessage = function(start,end){
+
+//Julia 5 as taken from http://www.nihilogic.dk/labs/javascript_canvas_fractals/
+
+function julia(attr){
 
 		data = {};
 		var px, py, it;
@@ -57,13 +68,11 @@ function test(attr){
 			data[offset] = c1;
 			data[offset+1] = c2;
 			data[offset+2] = c3;
-
-
-
 		}
 
+		// This function sends a message back to the server-side script
+		queenSocket({core: attr.core, data: data});
+	}
 
-
-
-	return data;
-}
+	julia(start,end);
+};

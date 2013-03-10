@@ -1,18 +1,279 @@
-    <head>
-    </head>
-    <body>
-	
-	<canvas id="canvas" width="1000" height="1000"> </canvas>
-	
-	
-	
-	
-	
-	        <script src="mandlebrot.js"></script>
-		<script>
-		mandlebrot.main();
-		</script>
-	</body>
-	
-	
-	</head>
+<!DOCTYPE html PUBLIC>
+<html>
+<head>
+
+
+<title>Nihilogic : Javascript Fractals</title>
+
+<!-- FROM -->
+<!-- http://www.nihilogic.dk/labs/javascript_canvas_fractals/ -->
+
+
+</head>
+<body>
+
+
+
+<canvas id="mandelbrot"></canvas>
+<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.min.js"></script>
+
+
+<script type="text/javascript" src="julia.js" ></script>
+
+<script type="text/javascript" src="underscore.min.js" ></script>
+<script type="text/javascript" src="parallel.min.js" ></script>
+
+
+<style>
+html, body {
+	width: 100%;
+	height: 100%;
+	position: relative;
+}
+canvas {
+	position: absolute;
+	top: 0px;
+	left: 0px;
+}
+
+.controls {
+	position: absolute;
+	top: 0px;
+	left: 0px;
+	background: rgba(117, 117, 117, 0.81);
+	padding: 10px;
+}
+
+
+</style>
+
+
+
+
+
+<script type="text/javascript">
+$(document).ready(function(){
+	var w = 200;
+	var h = 200;
+	var scale = 1;
+
+	var antialias = false;
+	var algo = "julia1";
+
+	var canvas = document.getElementById("mandelbrot");
+	canvas.width = w;
+	canvas.height = h;
+	canvas.style.width = scale*canvas.width+"px";
+	canvas.style.height = scale*canvas.height+"px";
+
+	var ctx = canvas.getContext("2d");
+
+
+	var vx = 0;
+	var vy = 0;
+	var zoom = 1;
+	var zoomFactor = 2;
+
+
+	var colors = {
+		bw : []
+	};
+	var color = "bw";
+
+
+
+
+	function render() {
+		console.log("Rendering ----------------");
+		ctx.fillStyle = "#000000";
+		ctx.fillRect(0,0,w,h);
+
+		var data = ctx.getImageData(0,0,w,h);
+
+		//startit was 30
+		var mi = Math.max(30, Math.round(Math.max(Math.log(zoom),1) * 30));
+		var itfac = 1/mi*30;
+
+		xmin = vx - 2/zoom;
+		xmax = vx + 2/zoom;
+		ymin = vy - 2/zoom;
+		ymax = vy + 2/zoom;
+
+		dx = xmax-xmin;
+		dy = ymax-ymin;
+
+
+		var colWeights = colors[color];
+
+		var col1, col2, col3;
+		var cw0 = colWeights[0], cw1 = colWeights[1], cw2 = colWeights[2];
+
+		//Data.data is the image data. We are over-writing this data
+		imgData = data;
+
+		cores = $("#cores").val();
+		each = ((w * h) / cores);
+
+
+		var data1 = ctx.getImageData(0,0,w,h);
+
+		para = [];
+
+		window.isParrallel = $("#parallel").attr("checked") == "checked";
+		window.isImage = $("#image").attr("checked") == "checked";
+
+
+		window.startTime = new Date().getTime();
+		for(var j = 0; j < cores; j++){
+			var start = (j * each );
+			var end = start + each;
+
+			//Parameters to pass
+			pass = {core: j, start:start,end:end,mi: mi,itfac: itfac,w: w,h: h,dx: dx,dy: dy,xmin: xmin,ymin: ymin};
+
+			if (!window.isParrallel) {
+				result = julia(pass);
+				for(at in result.data){
+					data1.data[at] = result.data[at];
+				}
+				var end = new Date().getTime();
+				console.log("Done:", result.core ,end - window.startTime);
+				if (isImage) {
+					ctx.putImageData(data1,0,0);
+				}
+			} else {
+
+
+
+				r = Parallel.spawn(julia, pass);
+				r.me = j;
+
+				// Fetch the remote reference and log the result when it's complete
+				r.fetch(function (result) {
+					for(at in result.data){
+						data1.data[at] = result.data[at];
+					}
+
+					if (window.isImage) {
+						ctx.putImageData(data1,0,0);
+					}
+
+					var end = new Date().getTime();
+					console.log("Done:", result.core, end - window.startTime);
+
+
+				});
+			}
+		}
+	}
+
+
+
+
+
+	/* --------------------------------------------------
+	User Interface Stuff , on clicks etc
+	-----------------------------------------------------*/
+	function getElementPos(el) {
+		var x = -(document.body.scrollLeft+document.documentElement.scrollLeft),
+			y = -(document.body.scrollTop+document.documentElement.scrollTop);
+		while (el && el.nodeName != "BODY") {
+			x += el.offsetLeft;
+			y += el.offsetTop;
+			el = el.offsetParent;
+		}
+		return {
+			x : x,
+			y : y
+		}
+	}
+
+	canvas.onclick = function(e) {
+		var pos = getElementPos(canvas)
+		var mx = e.clientX - pos.x;
+		var my = e.clientY - pos.y;
+
+		var fx = mx / (w*scale);
+		var fy = my / (h*scale);
+
+		vx = xmin + dx*fx;
+		vy = ymax - fy*dy;
+
+		zoom *= zoomFactor;
+
+		render();
+	}
+
+
+	$("button").click(function(){
+
+
+		size = $("#size").val();
+
+		w = h = parseInt(size,10);
+		canvas.width = w;
+		canvas.height = h;
+		canvas.style.width = scale*canvas.width+"px";
+		canvas.style.height = scale*canvas.height+"px";
+		render();
+
+	});
+
+
+
+
+
+
+
+	function onZoomFactorChange(sel) {
+		var opt = sel.options[sel.selectedIndex];
+		zoomFactor = parseFloat(opt.value);
+	}
+
+
+
+	function onAlgorithmChange(sel) {
+		algo = sel.options[sel.selectedIndex].value;
+		vx = vy = 0;
+		zoom = 1;
+		render();
+	}
+
+
+
+
+
+
+});
+
+</script>
+
+
+
+
+<div class="controls">
+Image size: <input value="400" id="size">
+<br>
+Cores: <input id="cores" value="8">
+<br>
+
+
+On-click Zoom factor: <select onchange="onZoomFactorChange(this);">
+ <option value="0.1">0.1</option>
+ <option value="0.5">0.5</option>
+ <option value="1">1 (no zoom)</option>
+ <option value="2" selected>2</option>
+ <option value="5">5</option>
+ <option value="10">10</option>
+ <option value="100">100</option>
+</select>
+<br>
+<input type="checkbox" id="parallel" />Parallel
+<input type="checkbox" id="image" />Image
+<br>
+<button value="go" />Go!</button>
+</div>
+
+</body>
+
+</html>
