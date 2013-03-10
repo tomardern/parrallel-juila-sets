@@ -2,7 +2,6 @@
 
 function julia(attr){
 
-
 		data = {};
 		var px, py, it;
 		var c1, c2, c3, m;
@@ -59,13 +58,7 @@ function julia(attr){
 			data[offset] = c1;
 			data[offset+1] = c2;
 			data[offset+2] = c3;
-
-
-
 		}
 
-
-
-
-	return data;
+	return {core: attr.core, data: data};
 }

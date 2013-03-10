@@ -84,6 +84,7 @@ $(document).ready(function(){
 
 
 	function render() {
+		console.log("Rendering ----------------");
 		ctx.fillStyle = "#000000";
 		ctx.fillRect(0,0,w,h);
 
@@ -110,7 +111,7 @@ $(document).ready(function(){
 		//Data.data is the image data. We are over-writing this data
 		imgData = data;
 
-		cores = 4;
+		cores = $("#cores").val();
 		each = ((w * h) / cores);
 
 
@@ -123,19 +124,19 @@ $(document).ready(function(){
 
 		window.startTime = new Date().getTime();
 		for(var j = 0; j < cores; j++){
-			start = (j * each );
-			end = start + each;
+			var start = (j * each );
+			var end = start + each;
 
 			//Parameters to pass
-			pass = {start:start,end:end,mi: mi,itfac: itfac,w: w,h: h,dx: dx,dy: dy,xmin: xmin,ymin: ymin};
+			pass = {core: j, start:start,end:end,mi: mi,itfac: itfac,w: w,h: h,dx: dx,dy: dy,xmin: xmin,ymin: ymin};
 
 			if (!isParrallel) {
 				result = julia(pass);
-				for(at in result){
-					data1.data[at] = result[at];
+				for(at in result.data){
+					data1.data[at] = result.data[at];
 				}
 				var end = new Date().getTime();
-				console.log("Done:", end - window.startTime);
+				console.log("Done:", result.core ,end - window.startTime);
 				ctx.putImageData(data1,0,0);
 			} else {
 
@@ -146,13 +147,13 @@ $(document).ready(function(){
 
 				// Fetch the remote reference and log the result when it's complete
 				para[j].fetch(function (result) {
-					for(at in result){
-						data1.data[at] = result[at];
+					for(at in result.data){
+						data1.data[at] = result.data[at];
 					}
 					ctx.putImageData(data1,0,0);
 
 					var end = new Date().getTime();
-					console.log("Done:", end - window.startTime);
+					console.log("Done:", result.core, end - window.startTime);
 
 
 				});
@@ -247,6 +248,9 @@ $(document).ready(function(){
 <div class="controls">
 Image size: <input value="400" id="size">
 <br>
+Cores: <input id="cores" value="8">
+<br>
+
 
 On-click Zoom factor: <select onchange="onZoomFactorChange(this);">
  <option value="0.1">0.1</option>
