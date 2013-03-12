@@ -60,7 +60,16 @@ var Options = function() {
   this.size = 400;
   this.isParallel = false;
   this.parallelCores = 4;
-  this.isImage = false;
+  this.isImage = true;
+  this.sChannel = "hello";
+  this.sBroadcast = true;
+  this.cChannel = "hello";
+  this.cRecieve = true;
+
+
+  this.render = function(){
+  	window.render();
+  };
 };
 
 
@@ -76,32 +85,60 @@ var f2 = gui.addFolder('Parallel');
 f2.add(options, 'isParallel');
 f2.add(options, 'parallelCores',1,20).step(1);
 
+var f3 = gui.addFolder('Distributed Server');
+f3.add(options, 'sBroadcast')
+f3.add(options, 'sChannel');
+
+var f4 = gui.addFolder('Distributed Client');
+f4.add(options, 'cRecieve');
+f4.add(options, 'cChannel');
+
+
+
+
+
+
+
+
+
+
+
 f1.open();
 f2.open();
 
+gui.add(options, 'render');
 
 
 
 
 
-	var canvas = document.getElementById("mandelbrot");
-	canvas.width = options.size;
-	canvas.height = options.size;
-	canvas.style.width = canvas.width+"px";
-	canvas.style.height = canvas.height+"px";
-
-	var ctx = canvas.getContext("2d");
 
 
-	function render() {
+
+
+	window.render = function() {
+
+
+		var canvas = document.getElementById("mandelbrot");
+		canvas.width = options.size;
+		canvas.height = options.size;
+		canvas.style.width = canvas.width+"px";
+		canvas.style.height = canvas.height+"px";
+
+		var ctx = canvas.getContext("2d");
+
+
 		console.log("Rendering ----------------");
 		ctx.fillStyle = "#000000";
 		ctx.fillRect(0,0,options.size,options.size);
 
+
+
 		var data = ctx.getImageData(0,0,options.size,options.size);
 
 		//Data.data is the image data. We are over-writing this data
-		cores = $("#cores").val();
+		cores = options.parallelCores;
+
 		each = ((options.size * options.size) / cores);
 
 
@@ -157,108 +194,12 @@ f2.open();
 
 
 
-	/* --------------------------------------------------
-	User Interface Stuff , on clicks etc
-	-----------------------------------------------------*/
-	function getElementPos(el) {
-		var x = -(document.body.scrollLeft+document.documentElement.scrollLeft),
-			y = -(document.body.scrollTop+document.documentElement.scrollTop);
-		while (el && el.nodeName != "BODY") {
-			x += el.offsetLeft;
-			y += el.offsetTop;
-			el = el.offsetParent;
-		}
-		return {
-			x : x,
-			y : y
-		}
-	}
-
-	canvas.onclick = function(e) {
-		var pos = getElementPos(canvas)
-		var mx = e.clientX - pos.x;
-		var my = e.clientY - pos.y;
-
-		var fx = mx / (w*scale);
-		var fy = my / (h*scale);
-
-		vx = xmin + dx*fx;
-		vy = ymax - fy*dy;
-
-		zoom *= zoomFactor;
-
-		render();
-	}
-
-
-	$("button").click(function(){
-
-
-		size = $("#size").val();
-
-		w = h = parseInt(size,10);
-		canvas.width = w;
-		canvas.height = h;
-		canvas.style.width = canvas.width+"px";
-		canvas.style.height = canvas.height+"px";
-		render();
-
-	});
-
-
-
-
-
-
-
-	function onZoomFactorChange(sel) {
-		var opt = sel.options[sel.selectedIndex];
-		zoomFactor = parseFloat(opt.value);
-	}
-
-
-
-	function onAlgorithmChange(sel) {
-		algo = sel.options[sel.selectedIndex].value;
-		vx = vy = 0;
-		zoom = 1;
-		render();
-	}
-
-
-
-
 
 
 });
 
 </script>
 
-
-
-
-<div class="controls">
-Image size: <input value="400" id="size">
-<br>
-Cores: <input id="cores" value="8">
-<br>
-
-
-On-click Zoom factor: <select onchange="onZoomFactorChange(this);">
- <option value="0.1">0.1</option>
- <option value="0.5">0.5</option>
- <option value="1">1 (no zoom)</option>
- <option value="2" selected>2</option>
- <option value="5">5</option>
- <option value="10">10</option>
- <option value="100">100</option>
-</select>
-<br>
-<input type="checkbox" id="parallel" />Parallel
-<input type="checkbox" id="image" />Image
-<br>
-<button value="go" />Go!</button>
-</div>
 
 </body>
 
