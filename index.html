@@ -72,8 +72,9 @@ var Options = function() {
   };
 };
 
-
-
+/* ----------------------------
+GUI using Dat.Gui
+----------------------------*/
 var options = new Options();
 var gui = new dat.GUI();
 
@@ -93,16 +94,6 @@ var f4 = gui.addFolder('Distributed Client');
 f4.add(options, 'cRecieve');
 f4.add(options, 'cChannel');
 
-
-
-
-
-
-
-
-
-
-
 f1.open();
 f2.open();
 
@@ -112,83 +103,78 @@ gui.add(options, 'render');
 
 
 
+window.render = function() {
+
+
+	var canvas = document.getElementById("mandelbrot");
+	canvas.width = canvas.height = options.size;
+	canvas.style.width = canvas.style.height+ "px";
+
+	var ctx = canvas.getContext("2d");
+
+	console.log("Rendering ----------------");
+	ctx.fillStyle = "#000000";
+	ctx.fillRect(0,0,options.size,options.size);
 
 
 
 
-	window.render = function() {
+
+	//Initially make the image data
+	var data = ctx.getImageData(0,0,options.size,options.size);
+
+	each = ((options.size * options.size) / options.parallelCores);
+
+	var data1 = ctx.getImageData(0,0,options.size,options.size);
+
+	para = [];
+
+	window.startTime = new Date().getTime();
+	for(var j = 0; j < options.parallelCores; j++){
+		var start = (j * each );
+		var end = start + each;
+
+		//Parameters to pass
+		pass = {start:start,end:end,size:options.size};
+
+		if (options.isParallel) {
+			//Pass parameters to the julia function
+			result = julia(pass);
+
+			//Now merge the objects together to get a full object
+			for(at in result.data){
+				data1.data[at] = result.data[at];
+			}
+
+			var end = new Date().getTime();
+			console.log("Done:", end - window.startTime);
+			if (options.isImage) {
+				ctx.putImageData(data1,0,0);
+			}
+		} else {
 
 
-		var canvas = document.getElementById("mandelbrot");
-		canvas.width = options.size;
-		canvas.height = options.size;
-		canvas.style.width = canvas.width+"px";
-		canvas.style.height = canvas.height+"px";
+			r = Parallel.spawn(julia, pass);
+			r.me = j;
 
-		var ctx = canvas.getContext("2d");
-
-
-		console.log("Rendering ----------------");
-		ctx.fillStyle = "#000000";
-		ctx.fillRect(0,0,options.size,options.size);
-
-
-
-		var data = ctx.getImageData(0,0,options.size,options.size);
-
-		//Data.data is the image data. We are over-writing this data
-		cores = options.parallelCores;
-
-		each = ((options.size * options.size) / cores);
-
-
-		var data1 = ctx.getImageData(0,0,options.size,options.size);
-
-		para = [];
-
-		window.startTime = new Date().getTime();
-		for(var j = 0; j < cores; j++){
-			var start = (j * each );
-			var end = start + each;
-
-			//Parameters to pass
-			pass = {start:start,end:end,size:options.size};
-
-			if (options.isParallel) {
-				result = julia(pass);
+			// Fetch the remote reference and log the result when it's complete
+			r.fetch(function (result) {
 				for(at in result.data){
 					data1.data[at] = result.data[at];
 				}
-				var end = new Date().getTime();
-				console.log("Done:", end - window.startTime);
+
 				if (options.isImage) {
 					ctx.putImageData(data1,0,0);
 				}
-			} else {
+
+				var end = new Date().getTime();
+				console.log("Done:", result.core, end - window.startTime);
 
 
-
-				r = Parallel.spawn(julia, pass);
-				r.me = j;
-
-				// Fetch the remote reference and log the result when it's complete
-				r.fetch(function (result) {
-					for(at in result.data){
-						data1.data[at] = result.data[at];
-					}
-
-					if (options.isImage) {
-						ctx.putImageData(data1,0,0);
-					}
-
-					var end = new Date().getTime();
-					console.log("Done:", result.core, end - window.startTime);
-
-
-				});
-			}
+			});
 		}
 	}
+}
 
 
 
