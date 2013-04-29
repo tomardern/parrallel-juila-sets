@@ -10,42 +10,58 @@ app.listen(8080);
 counter = 0;
 connections = [];
 
+
 /* --------------------------------------------------
 When a user connects to the socket.io
 -----------------------------------------------------*/
 io.sockets.on('connection', function (socket) {
 
 
+
   /* ----------------------------
   On Register
   ----------------------------*/
-  socket.on('register', function (name, fn) {
+  socket.on('register', function (status, fn) {
+      register(status,fn,this);
+  });
 
-    socket.number = "c" + counter++;
-    connections.push(socket.number);
 
-    console.log(socket.number + " connected. Now " + connections.length + " are connected");
+
+  register = function(status,fn,socket) {
+
+    //If we are registering
+    if (status) {
+      socket.number = "c" + counter++;
+      connections.push(socket.number);
+
+      console.log(socket.number + " Registered. " + connections.length + " connected");
+    }
+
+
+    //If we are disabling
+    else {
+      connections.splice(connections.indexOf(socket.number),1);
+      console.log(socket.number + " Unregistered. " + connections.length + " connected");
+
+      socket.number = "";
+
+    }
 
     //Do the required callback
-    fn(socket.number);
+    if (typeof fn == "function"){
+      fn(socket.number);
+    }
 
     //Tell the number of users how many are connected
     io.sockets.emit('connections', { total: connections.length });
-
-
-  });
+  }
 
 
   /* ----------------------------
   On disconnect
   ----------------------------*/
   socket.on("disconnect", function(){
-
-    connections.splice(connections.indexOf(socket.number),1);
-    console.log(socket.number + " disconnect. Total " + connections.length);
-
-    //Tell the number of users how many are connected
-    io.sockets.emit('connections', { total: connections.length });
+    register(false,null,this);
   });
 
 
@@ -56,14 +72,11 @@ io.sockets.on('connection', function (socket) {
   socket.on("request", function(data){
     requester = this;
 
+    //TODO, calculate required start/end points
 
     //Now we need to sort out who gets what
     payload = {size: data.size, connections: {}, total: connections.length};
     for(i=0;i<connections.length;i++){
-
-
-      //TODO, calculate required start/end points
-
       payload.connections[connections[i]] = i;
     }
 
@@ -73,13 +86,6 @@ io.sockets.on('connection', function (socket) {
 
   });
 
-
-
-
- /*  socket.emit('news', { hello: 'world' });
-  socket.on('my other event', function (data) {
-    console.log(data);
-  }); */
 
 
 

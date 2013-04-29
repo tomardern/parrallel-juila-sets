@@ -37,6 +37,7 @@ $(document).ready(function(){
 	  this.size = 400;
 
 
+	  this.isAvailable = true;
 	  this.distributedCores = 0;
 	  this.distributedID = "";
 	  this.computeDistributed = function(){
@@ -67,7 +68,7 @@ $(document).ready(function(){
 	f2.add(options, 'computeLocal');
 
 	var f3 = gui.addFolder('Distributed');
-	f3.add(options, 'distributedCores').listen();
+	availability = f3.add(options,'isAvailable');
 	f3.add(options, 'distributedID').listen();
 	f3.add(options, 'computeDistributed');
 
@@ -166,16 +167,16 @@ $(document).ready(function(){
 
 
 
-
-
-
 	var socket = io.connect('http://parrallel-juila-sets.192.168.1.6.xip.io:8080');
 	socket.on('connect', function (data) {
 
 		//Now we need to register (Todo, can we combine with connect above?)
-		socket.emit('register', '', function (data) {
+		socket.emit('register', true, function (data) {
 			options.distributedID = data;
    		});
+
+
+
 	});
 
 	socket.on("connections", function(data){
@@ -184,6 +185,19 @@ $(document).ready(function(){
 		//Update the distributed cores amount to let the user know whats going on
 		options.distributedCores = data.total;
 	});
+
+	//If the availability changes
+	availability.onChange(function(value){
+		//Now we need to register (Todo, can we combine with connect above?)
+		socket.emit('register', value, function (data) {
+			options.distributedID = data;
+   		});
+
+
+
+	});
+
+
 
 	/* ----------------------------
 	Now been asked to compute, lets go
