@@ -32,7 +32,10 @@ $(document).ready(function(){
 
 
 	var Options = function() {
+
+	  this.ctx = {}; //Context storage
 	  this.size = 400;
+
 
 	  this.distributedCores = 0;
 	  this.distributedID = "";
@@ -93,38 +96,31 @@ $(document).ready(function(){
 	/* ----------------------------
 	Compute/Render
 	----------------------------*/
-	window.render = function(ctx, result){
+	window.render = function(result){
 
-		current = ctx.getImageData(0,0,options.size,options.size);
+		//Get the current image data
+		current = options.ctx.getImageData(0,0,options.size,options.size);
 
 		//Merge into correct object
 		for(at in result.data){
 			current.data[at] = result.data[at];
 		}
 
-		ctx.putImageData(current,0,0);
+		options.ctx.putImageData(current,0,0);
 
 		console.log("Done:", result.num , result.time);
 
 	};
 
 
+	/* ----------------------------
+	Computes a set area
+	----------------------------*/
+	window.compute = function(start, end, callback){
 
-	/* --------------------------------------------------
-	Render by Local means (ParallelCores)
-	-----------------------------------------------------*/
-	window.local = function() {
+		console.log("start", start, "end", end);
 
-
-		ctx = window.canvasInit(options.size);
-
-		console.log("Computing ----------------");
-
-		//Size of each
-		each = ((options.size * options.size) / options.parallelCores);
-
-		//Create empty image Data
-		var data1 = ctx.getImageData(0,0,options.size,options.size);
+		each = (end - start) / options.parallelCores;
 
 		for(var j = 0; j < options.parallelCores; j++){
 
@@ -140,9 +136,29 @@ $(document).ready(function(){
 			//Spawn a worker, fetch data on compleation
 			Parallel.spawn(julia, pass).fetch(function (result) {
 				//Render what is required
-				window.render(ctx, result);
+				callback(result);
 			});
 		}
+
+
+	};
+
+
+
+	/* --------------------------------------------------
+	Render by Local means (ParallelCores)
+	-----------------------------------------------------*/
+	window.local = function() {
+
+		//Set the current context
+		options.ctx = window.canvasInit(options.size);
+
+		console.log("Computing ----------------");
+
+		//Compute from the beginning to the end
+		window.compute(0, options.size * options.size, window.render);
+
+
 	};
 
 
