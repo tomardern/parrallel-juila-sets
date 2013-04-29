@@ -33,8 +33,6 @@ $(document).ready(function(){
 
 	var Options = function() {
 	  this.size = 400;
-	  this.isImage = true;
-
 
 	  this.distributedCores = 0;
 	  this.distributedID = "";
@@ -59,8 +57,7 @@ $(document).ready(function(){
 	var gui = new dat.GUI();
 
 	var f1 = gui.addFolder('Options');
-	f1.add(options, 'size',0,2000).step(1);
-	f1.add(options, 'isImage');
+	f1.add(options, 'size',0,2000).step(2).listen();
 
 	var f2 = gui.addFolder('Parallel');
 	f2.add(options, 'parallelCores',1,20).step(1);
@@ -94,8 +91,23 @@ $(document).ready(function(){
 
 
 	/* ----------------------------
-	Compute/Ren
+	Compute/Render
 	----------------------------*/
+	window.render = function(ctx, result){
+
+		current = ctx.getImageData(0,0,options.size,options.size);
+
+		//Merge into correct object
+		for(at in result.data){
+			current.data[at] = result.data[at];
+		}
+
+		ctx.putImageData(current,0,0);
+
+		console.log("Done:", result.num , result.time);
+
+	};
+
 
 
 	/* --------------------------------------------------
@@ -111,36 +123,35 @@ $(document).ready(function(){
 		//Size of each
 		each = ((options.size * options.size) / options.parallelCores);
 
+		//Create empty image Data
 		var data1 = ctx.getImageData(0,0,options.size,options.size);
 
-		window.startTime = new Date().getTime();
 		for(var j = 0; j < options.parallelCores; j++){
 
 			//Parameters to pass
 			pass = {
 				start: (j * each ),
 				end: (j * each ) + each,
-				size:options.size,
+				size: options.size,
 				num: j
 			};
 
-			r = Parallel.spawn(julia, pass);
 
-			// Fetch the remote reference and log the result when it's complete
-			r.fetch(function (result) {
-				for(at in result.data){
-					data1.data[at] = result.data[at];
-				}
-
-				if (options.isImage) {
-					ctx.putImageData(data1,0,0);
-				}
-
-				console.log("Done:", result.num , result.time);
-
+			//Spawn a worker, fetch data on compleation
+			Parallel.spawn(julia, pass).fetch(function (result) {
+				//Render what is required
+				window.render(ctx, result);
 			});
 		}
-	}
+	};
+
+
+
+
+
+
+
+
 
 
 
@@ -168,13 +179,39 @@ $(document).ready(function(){
 		//If a distributed ID has been set
 		if (options.distributedID.length){
 
-			//Find the index within the available list
+			//Update the sizing options
+			options.size = data.size;
+
 			//Ok, now we have found the index, we need to work out
 			index = data.connections[options.distributedID];
 
-			console.log("compute",data);
+			//Size of each
+			each = ((data.size * data.size) / data.total);
 
+			//Starting point for this socket requirement is
+			start = (index * each);
+			end = (start + each);
+			console.log("start",start,"end",end);
+
+			//Update the context so that we know what we are working in
 			ctx = window.canvasInit(options.size);
+
+			//Parameters to pass
+			pass = {
+				start: (index * each),
+				end: (start + each),
+				size: options.size,
+				num: options.distributedID
+			};
+
+
+			//Spawn a worker, fetch data on compleation
+			Parallel.spawn(julia, pass).fetch(function (result) {
+				//Render what is required
+				window.render(ctx, result);
+			});
+
+
 
 
 
