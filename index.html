@@ -3,26 +3,36 @@
 <head>
 
 
-<title>Nihilogic : Javascript Fractals</title>
-
 <!-- FROM -->
 <!-- http://www.nihilogic.dk/labs/javascript_canvas_fractals/ -->
-
-
 </head>
 <body>
 
 
 
 <canvas id="mandelbrot"></canvas>
+
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+  var socket = io.connect('http://localhost:8080');
+  socket.on('connect', function (data) {
+    console.log("I've connected");
+    //socket.emit('my other event', { my: 'data' });
+  });
+
+
+</script>
+
+
+
 <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.min.js"></script>
 
 
 <script type="text/javascript" src="julia.js" ></script>
-
 <script type="text/javascript" src="underscore.min.js" ></script>
 <script type="text/javascript" src="parallel.min.js" ></script>
-
+<script type="text/javascript" src="dat.gui.min.js"></script>
 
 <style>
 html, body {
@@ -47,7 +57,7 @@ canvas {
 
 </style>
 
-<script type="text/javascript" src="dat.gui.min.js"></script>
+
 <script type="text/javascript">
 
 
@@ -56,126 +66,126 @@ $(document).ready(function(){
 
 
 
-var Options = function() {
-  this.size = 400;
-  this.isParallel = false;
-  this.parallelCores = 4;
-  this.isImage = true;
-  this.sChannel = "hello";
-  this.sBroadcast = true;
-  this.cChannel = "hello";
-  this.cRecieve = true;
+	var Options = function() {
+	  this.size = 400;
+	  this.isParallel = false;
+	  this.parallelCores = 4;
+	  this.isImage = true;
 
+	  this.isClient = true; //If its a client
+	  this.isServer = true; //Sends out the available connections
 
-  this.render = function(){
-  	window.render();
-  };
-};
+	  this.render = function(){
+	  	window.render();
+	  };
+	};
 
-/* ----------------------------
-GUI using Dat.Gui
-----------------------------*/
-var options = new Options();
-var gui = new dat.GUI();
+	/* ----------------------------
+	GUI using Dat.Gui
+	----------------------------*/
+	var options = new Options();
+	var gui = new dat.GUI();
 
-var f1 = gui.addFolder('General Options');
-f1.add(options, 'size',0,2000).step(1);
-f1.add(options, 'isImage');
+	var f1 = gui.addFolder('General Options');
+	f1.add(options, 'size',0,2000).step(1);
+	f1.add(options, 'isImage');
 
-var f2 = gui.addFolder('Parallel');
-f2.add(options, 'isParallel');
-f2.add(options, 'parallelCores',1,20).step(1);
+	var f2 = gui.addFolder('Parallel');
+	f2.add(options, 'isParallel');
+	f2.add(options, 'parallelCores',1,20).step(1);
 
-var f3 = gui.addFolder('Distributed Server');
-f3.add(options, 'sBroadcast')
-f3.add(options, 'sChannel');
+	var f3 = gui.addFolder('Distributed');
+	f3.add(options, 'isClient');
+	f3.add(options, 'isServer');
+	gui.add(options, 'render');
 
-var f4 = gui.addFolder('Distributed Client');
-f4.add(options, 'cRecieve');
-f4.add(options, 'cChannel');
-
-f1.open();
-f2.open();
-
-gui.add(options, 'render');
+	f1.open();
+	f2.open();
+	f3.open();
 
 
 
+	window.render = function() {
 
 
-window.render = function() {
+		var canvas = document.getElementById("mandelbrot");
+		canvas.width = canvas.height = options.size;
+		canvas.style.width = canvas.style.height+ "px";
 
+		var ctx = canvas.getContext("2d");
 
-	var canvas = document.getElementById("mandelbrot");
-	canvas.width = canvas.height = options.size;
-	canvas.style.width = canvas.style.height+ "px";
-
-	var ctx = canvas.getContext("2d");
-
-	console.log("Rendering ----------------");
-	ctx.fillStyle = "#000000";
-	ctx.fillRect(0,0,options.size,options.size);
-
+		console.log("Rendering ----------------");
+		ctx.fillStyle = "#000000";
+		ctx.fillRect(0,0,options.size,options.size);
 
 
 
+		//Initially make the image data
+		var data = ctx.getImageData(0,0,options.size,options.size);
 
-	//Initially make the image data
-	var data = ctx.getImageData(0,0,options.size,options.size);
+		each = ((options.size * options.size) / options.parallelCores);
 
-	each = ((options.size * options.size) / options.parallelCores);
+		var data1 = ctx.getImageData(0,0,options.size,options.size);
 
-	var data1 = ctx.getImageData(0,0,options.size,options.size);
+		para = [];
 
-	para = [];
+		window.startTime = new Date().getTime();
+		for(var j = 0; j < options.parallelCores; j++){
+			var start = (j * each );
+			var end = start + each;
 
-	window.startTime = new Date().getTime();
-	for(var j = 0; j < options.parallelCores; j++){
-		var start = (j * each );
-		var end = start + each;
+			//Parameters to pass
+			pass = {
+				start:start,
+				end:end,
+				size:options.size
+			};
 
-		//Parameters to pass
-		pass = {start:start,end:end,size:options.size};
+			//If it's parallel on the CPU
+			if (!options.isParallel) {
+				//Pass parameters to the julia function
+				result = julia(pass);
 
-		if (options.isParallel) {
-			//Pass parameters to the julia function
-			result = julia(pass);
-
-			//Now merge the objects together to get a full object
-			for(at in result.data){
-				data1.data[at] = result.data[at];
-			}
-
-			var end = new Date().getTime();
-			console.log("Done:", end - window.startTime);
-			if (options.isImage) {
-				ctx.putImageData(data1,0,0);
-			}
-		} else {
-
-
-			r = Parallel.spawn(julia, pass);
-			r.me = j;
-
-			// Fetch the remote reference and log the result when it's complete
-			r.fetch(function (result) {
+				//Now merge the objects together to get a full object
 				for(at in result.data){
 					data1.data[at] = result.data[at];
 				}
 
+				var end = new Date().getTime();
+				console.log("Done:", end - window.startTime);
 				if (options.isImage) {
 					ctx.putImageData(data1,0,0);
 				}
+			}
 
-				var end = new Date().getTime();
-				console.log("Done:", result.core, end - window.startTime);
+			//
+			else {
 
 
-			});
+				r = Parallel.spawn(julia, pass);
+				r.me = j;
+
+
+				// Fetch the remote reference and log the result when it's complete
+				r.fetch(function (result) {
+					for(at in result.data){
+						data1.data[at] = result.data[at];
+					}
+
+					if (options.isImage) {
+						ctx.putImageData(data1,0,0);
+					}
+
+
+
+					var end = new Date().getTime();
+					console.log("Done:", result.me, end - window.startTime);
+
+
+				});
+			}
 		}
 	}
-}
-
 
 
 

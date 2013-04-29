@@ -14,8 +14,6 @@ function julia(attr){
 	var ci = -0.2321;
 
 
-
-
 	var mi = Math.max(30, Math.round(Math.max(Math.log(zoom),1) * 30)); //30 is startit
 	var itfac = 1/mi*30;
 
