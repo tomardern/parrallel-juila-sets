@@ -34,8 +34,11 @@ $(document).ready(function(){
 	var Options = function() {
 
 	  this.ctx = {}; //Context storage
-	  this.size = 400;
+	  this.type = ""; //Type of render (ie local or distributed)
 
+
+	  this.size = 400;
+	  this.showRender = true;
 
 	  this.isAvailable = true;
 	  this.distributedCores = 0;
@@ -62,6 +65,8 @@ $(document).ready(function(){
 
 	var f1 = gui.addFolder('Options');
 	f1.add(options, 'size',0,2000).step(2).listen();
+	f1.add(options, 'showRender');
+
 
 	var f2 = gui.addFolder('Parallel');
 	f2.add(options, 'parallelCores',1,20).step(1);
@@ -87,6 +92,8 @@ $(document).ready(function(){
 
 		canvas.width = canvas.height = size;
 		canvas.style.width = canvas.style.height+ "px";
+
+		//Reset the context, to check that image data is correct
 		ctx.fillStyle = "#000000";
 		ctx.fillRect(0,0,canvas.width,canvas.height);
 
@@ -110,9 +117,12 @@ $(document).ready(function(){
 			current.data[at] = result.data[at];
 		}
 
-		options.ctx.putImageData(current,0,0);
+		if (options.showRender) {
+			options.ctx.putImageData(current,0,0);
+		}
 
-		console.log("Core:",result.num,"Start:", result.start, "End:",result.end, "Time:", result.time);
+
+		console.log(options.type, "Core:",result.num,"Start:", result.start, "End:",result.end, "Time:", result.time);
 
 	};
 
@@ -122,14 +132,15 @@ $(document).ready(function(){
 	----------------------------*/
 	window.compute = function(start, end, callback){
 
+
 		each = (end - start) / options.parallelCores;
 
 		for(var j = 0; j < options.parallelCores; j++){
 
 			//Parameters to pass
 			pass = {
-				start: (j * each ) + start,
-				end: (j * each ) + start + each,
+				start: parseInt((j * each ) + start),
+				end: parseInt((j * each ) + start + each),
 				size: options.size,
 				num: j
 			};
@@ -150,7 +161,7 @@ $(document).ready(function(){
 	Render by Local means (ParallelCores)
 	-----------------------------------------------------*/
 	window.local = function() {
-		console.log("Local Parallel |=======================");
+		options.type = "local";
 
 		//Set the current context
 		options.ctx = window.canvasInit(options.size);
@@ -175,13 +186,9 @@ $(document).ready(function(){
 			options.distributedID = data;
    		});
 
-
-
 	});
 
 	socket.on("connections", function(data){
-
-		console.log("connections",data);
 		//Update the distributed cores amount to let the user know whats going on
 		options.distributedCores = data.total;
 	});
@@ -192,9 +199,6 @@ $(document).ready(function(){
 		socket.emit('register', value, function (data) {
 			options.distributedID = data;
    		});
-
-
-
 	});
 
 
@@ -207,7 +211,8 @@ $(document).ready(function(){
 		//If a distributed ID has been set
 		if (options.distributedID.length){
 
-			console.log("Distributed |=======================");
+			options.type = "distributed";
+
 
 			//Update the sizing options
 			options.size = data.size;

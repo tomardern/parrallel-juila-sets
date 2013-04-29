@@ -37,14 +37,11 @@ io.sockets.on('connection', function (socket) {
       console.log(socket.number + " Registered. " + connections.length + " connected");
     }
 
-
     //If we are disabling
-    else {
+    else if (socket.number.length) {
       connections.splice(connections.indexOf(socket.number),1);
       console.log(socket.number + " Unregistered. " + connections.length + " connected");
-
       socket.number = "";
-
     }
 
     //Do the required callback
