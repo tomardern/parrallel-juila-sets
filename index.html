@@ -88,6 +88,9 @@ $(document).ready(function(){
 		canvas.style.width = canvas.style.height+ "px";
 		ctx.fillStyle = "#000000";
 		ctx.fillRect(0,0,canvas.width,canvas.height);
+
+		options.ctx = ctx;
+
 		return ctx;
 	};
 
@@ -108,7 +111,7 @@ $(document).ready(function(){
 
 		options.ctx.putImageData(current,0,0);
 
-		console.log("Done:", result.num , result.time);
+		console.log("Core:",result.num,"Start:", result.start, "End:",result.end, "Time:", result.time);
 
 	};
 
@@ -118,20 +121,17 @@ $(document).ready(function(){
 	----------------------------*/
 	window.compute = function(start, end, callback){
 
-		console.log("start", start, "end", end);
-
 		each = (end - start) / options.parallelCores;
 
 		for(var j = 0; j < options.parallelCores; j++){
 
 			//Parameters to pass
 			pass = {
-				start: (j * each ),
-				end: (j * each ) + each,
+				start: (j * each ) + start,
+				end: (j * each ) + start + each,
 				size: options.size,
 				num: j
 			};
-
 
 			//Spawn a worker, fetch data on compleation
 			Parallel.spawn(julia, pass).fetch(function (result) {
@@ -149,15 +149,13 @@ $(document).ready(function(){
 	Render by Local means (ParallelCores)
 	-----------------------------------------------------*/
 	window.local = function() {
+		console.log("Local Parallel |=======================");
 
 		//Set the current context
 		options.ctx = window.canvasInit(options.size);
 
-		console.log("Computing ----------------");
-
 		//Compute from the beginning to the end
 		window.compute(0, options.size * options.size, window.render);
-
 
 	};
 
@@ -195,41 +193,26 @@ $(document).ready(function(){
 		//If a distributed ID has been set
 		if (options.distributedID.length){
 
+			console.log("Distributed |=======================");
+
 			//Update the sizing options
 			options.size = data.size;
 
 			//Ok, now we have found the index, we need to work out
 			index = data.connections[options.distributedID];
 
-			//Size of each
+			//Size for each connected device
 			each = ((data.size * data.size) / data.total);
 
-			//Starting point for this socket requirement is
+			//Starting point for this socket
 			start = (index * each);
 			end = (start + each);
-			console.log("start",start,"end",end);
 
 			//Update the context so that we know what we are working in
-			ctx = window.canvasInit(options.size);
+			window.canvasInit(options.size);
 
-			//Parameters to pass
-			pass = {
-				start: (index * each),
-				end: (start + each),
-				size: options.size,
-				num: options.distributedID
-			};
-
-
-			//Spawn a worker, fetch data on compleation
-			Parallel.spawn(julia, pass).fetch(function (result) {
-				//Render what is required
-				window.render(ctx, result);
-			});
-
-
-
-
+			//Compute from the beginning to the end
+			window.compute(start, end, window.render);
 
 		}
 

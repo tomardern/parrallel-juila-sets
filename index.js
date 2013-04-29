@@ -60,6 +60,10 @@ io.sockets.on('connection', function (socket) {
     //Now we need to sort out who gets what
     payload = {size: data.size, connections: {}, total: connections.length};
     for(i=0;i<connections.length;i++){
+
+
+      //TODO, calculate required start/end points
+
       payload.connections[connections[i]] = i;
     }
 

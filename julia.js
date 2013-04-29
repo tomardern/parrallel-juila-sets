@@ -85,5 +85,5 @@ function julia(attr){
 	var end = new Date().getTime();
 
 
-	return {data: data, num: attr.num, time: end - startTime};
+	return {data: data, num: attr.num, time: end - startTime, start: attr.start , end: attr.end};
 }
