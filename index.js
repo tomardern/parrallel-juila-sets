@@ -10,29 +10,55 @@ app.listen(8080);
 counter = 0;
 connections = [];
 
-//When a user is connected
+/* --------------------------------------------------
+When a user connects to the socket.io
+-----------------------------------------------------*/
 io.sockets.on('connection', function (socket) {
 
-  socket.number = "c" + counter++;
 
-  connections.push(socket.number);
+  /* ----------------------------
+  On Register
+  ----------------------------*/
+  socket.on('register', function (name, fn) {
 
-  console.log(socket.number + " connected. Now " + connections.length + " are connected");
+    socket.number = "c" + counter++;
+    connections.push(socket.number);
 
+    console.log(socket.number + " connected. Now " + connections.length + " are connected");
 
-  socket.on("disconnect", function(){
+    fn(socket.number);
 
-
-
-
-
-    connections.splice(connections.indexOf(socket.number),1);
-
-
-    console.log(socket.number + " disconnect. Total " + connections.length);
-
+    //Tell the number of users how many are connected
+    io.sockets.emit('connections', { total: connections.length });
 
   });
+
+
+  /* ----------------------------
+  On disconnect
+  ----------------------------*/
+  socket.on("disconnect", function(){
+
+    connections.splice(connections.indexOf(socket.number),1);
+    console.log(socket.number + " disconnect. Total " + connections.length);
+
+    //Tell the number of users how many are connected
+    io.sockets.emit('connections', { total: connections.length });
+  });
+
+
+  /* ----------------------------
+  On Request to compute
+  ----------------------------*/
+  requester = {};
+  socket.on("request", function(data){
+    requester = this;
+
+    //Send to all other sockets
+    io.sockets.emit('compute', data);
+
+  });
+
 
 
 
@@ -40,10 +66,6 @@ io.sockets.on('connection', function (socket) {
   socket.on('my other event', function (data) {
     console.log(data);
   }); */
-
-
-
-
 
 
 

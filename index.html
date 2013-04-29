@@ -8,22 +8,7 @@
 </head>
 <body>
 
-
-
 <canvas id="mandelbrot"></canvas>
-
-
-<script src="socket.io.js"></script>
-<script>
-  var socket = io.connect('http://localhost:8080');
-  socket.on('connect', function (data) {
-    console.log("I've connected");
-    //socket.emit('my other event', { my: 'data' });
-  });
-
-
-</script>
-
 
 
 <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.min.js"></script>
@@ -34,28 +19,8 @@
 <script type="text/javascript" src="parallel.min.js" ></script>
 <script type="text/javascript" src="dat.gui.min.js"></script>
 
-<style>
-html, body {
-	width: 100%;
-	height: 100%;
-	position: relative;
-}
-canvas {
-	position: absolute;
-	top: 0px;
-	left: 0px;
-}
+<script src="socket.io.js"></script>
 
-.controls {
-	position: absolute;
-	top: 0px;
-	left: 0px;
-	background: rgba(117, 117, 117, 0.81);
-	padding: 10px;
-}
-
-
-</style>
 
 
 <script type="text/javascript">
@@ -68,36 +33,41 @@ $(document).ready(function(){
 
 	var Options = function() {
 	  this.size = 400;
-	  this.isParallel = false;
-	  this.parallelCores = 4;
 	  this.isImage = true;
 
-	  this.isClient = true; //If its a client
-	  this.isServer = true; //Sends out the available connections
 
-	  this.render = function(){
-	  	window.render();
+	  this.distributedCores = 0;
+	  this.computeDistributed = function(){
+	  	window.distributed();
 	  };
+
+
+	 this.parallelCores = 1;
+	  this.computeLocal = function(){
+	  	window.local();
+	  };
+
+
+
 	};
 
 	/* ----------------------------
 	GUI using Dat.Gui
 	----------------------------*/
-	var options = new Options();
+	window.options = new Options();
 	var gui = new dat.GUI();
 
-	var f1 = gui.addFolder('General Options');
+	var f1 = gui.addFolder('Options');
 	f1.add(options, 'size',0,2000).step(1);
 	f1.add(options, 'isImage');
 
 	var f2 = gui.addFolder('Parallel');
-	f2.add(options, 'isParallel');
 	f2.add(options, 'parallelCores',1,20).step(1);
+	f2.add(options, 'computeLocal');
 
 	var f3 = gui.addFolder('Distributed');
-	f3.add(options, 'isClient');
-	f3.add(options, 'isServer');
-	gui.add(options, 'render');
+	f3.add(options, 'distributedCores').listen()
+	f3.add(options, 'computeDistributed');
 
 	f1.open();
 	f2.open();
@@ -105,7 +75,14 @@ $(document).ready(function(){
 
 
 
-	window.render = function() {
+
+
+
+
+	/* --------------------------------------------------
+	Render by Local means (ParallelCores)
+	-----------------------------------------------------*/
+	window.local = function() {
 
 
 		var canvas = document.getElementById("mandelbrot");
@@ -141,53 +118,68 @@ $(document).ready(function(){
 				size:options.size
 			};
 
-			//If it's parallel on the CPU
-			if (!options.isParallel) {
-				//Pass parameters to the julia function
-				result = julia(pass);
+			r = Parallel.spawn(julia, pass);
+			r.me = j;
 
-				//Now merge the objects together to get a full object
+
+			// Fetch the remote reference and log the result when it's complete
+			r.fetch(function (result) {
 				for(at in result.data){
 					data1.data[at] = result.data[at];
 				}
 
-				var end = new Date().getTime();
-				console.log("Done:", end - window.startTime);
 				if (options.isImage) {
 					ctx.putImageData(data1,0,0);
 				}
-			}
-
-			//
-			else {
 
 
-				r = Parallel.spawn(julia, pass);
-				r.me = j;
+				var end = new Date().getTime();
+				console.log("Done:", end - window.startTime);
 
 
-				// Fetch the remote reference and log the result when it's complete
-				r.fetch(function (result) {
-					for(at in result.data){
-						data1.data[at] = result.data[at];
-					}
-
-					if (options.isImage) {
-						ctx.putImageData(data1,0,0);
-					}
-
-
-
-					var end = new Date().getTime();
-					console.log("Done:", result.me, end - window.startTime);
-
-
-				});
-			}
+			});
 		}
 	}
 
 
+
+	var socket = io.connect('http://parrallel-juila-sets.192.168.1.6.xip.io:8080');
+	socket.on('connect', function (data) {
+		console.log("I've connected");
+		socket.emit('register', '', function (data) {
+      		console.log("I am:",data); // data will be 'woot'
+   		});
+	});
+
+	socket.on("connections", function(data){
+
+		console.log("connections",data);
+		//Update the distributed cores amount to let the user know whats going on
+		window.options.distributedCores = data.total;
+	});
+
+	socket.on("compute", function(data){
+
+		console.log("compute",data);
+
+	});
+
+
+
+
+	window.distributed = function(){
+
+		//Firstly, lets send out options to the socket.io server
+
+		imgOpts = {
+			size:options.size,
+		};
+
+		//Emit to the server
+		socket.emit('request', imgOpts);
+
+
+	};
 
 
 
@@ -195,6 +187,7 @@ $(document).ready(function(){
 });
 
 </script>
+
 
 
 </body>
