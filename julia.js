@@ -31,7 +31,7 @@ function julia(attr){
 	var c1, c2, c3, m;
 
 
-
+	startTime = new Date().getTime();
 	for(i = start; i < end; i ++) {
 		var offset = i*4;
 
@@ -82,5 +82,8 @@ function julia(attr){
 		data[offset+2] = c3;
 	}
 
-	return {data: data};
+	var end = new Date().getTime();
+
+
+	return {data: data, num: attr.num, time: end - startTime};
 }

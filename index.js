@@ -26,10 +26,12 @@ io.sockets.on('connection', function (socket) {
 
     console.log(socket.number + " connected. Now " + connections.length + " are connected");
 
+    //Do the required callback
     fn(socket.number);
 
     //Tell the number of users how many are connected
     io.sockets.emit('connections', { total: connections.length });
+
 
   });
 
@@ -54,8 +56,16 @@ io.sockets.on('connection', function (socket) {
   socket.on("request", function(data){
     requester = this;
 
+
+    //Now we need to sort out who gets what
+    payload = {size: data.size, connections: {}};
+    for(i=0;i<connections.length;i++){
+      payload.connections[connections[i]] = i;
+    }
+
+
     //Send to all other sockets
-    io.sockets.emit('compute', data);
+    io.sockets.emit('compute', payload);
 
   });
 

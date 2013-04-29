@@ -8,7 +8,7 @@
 </head>
 <body>
 
-<canvas id="mandelbrot"></canvas>
+<canvas id="drawarea"></canvas>
 
 
 <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.min.js"></script>
@@ -37,6 +37,7 @@ $(document).ready(function(){
 
 
 	  this.distributedCores = 0;
+	  this.distributedID = "";
 	  this.computeDistributed = function(){
 	  	window.distributed();
 	  };
@@ -66,7 +67,8 @@ $(document).ready(function(){
 	f2.add(options, 'computeLocal');
 
 	var f3 = gui.addFolder('Distributed');
-	f3.add(options, 'distributedCores').listen()
+	f3.add(options, 'distributedCores').listen();
+	f3.add(options, 'distributedID').listen();
 	f3.add(options, 'computeDistributed');
 
 	f1.open();
@@ -74,9 +76,26 @@ $(document).ready(function(){
 	f3.open();
 
 
+	/* ----------------------------
+	Initialise Canvas
+	----------------------------*/
+	window.canvasInit = function(size){
+
+		var canvas = document.getElementById("drawarea");
+		var ctx = canvas.getContext("2d");
+
+		canvas.width = canvas.height = size;
+		canvas.style.width = canvas.style.height+ "px";
+		ctx.fillStyle = "#000000";
+		ctx.fillRect(0,0,canvas.width,canvas.height);
+		return ctx;
+	};
 
 
 
+	/* ----------------------------
+	Compute/Ren
+	----------------------------*/
 
 
 	/* --------------------------------------------------
@@ -85,42 +104,27 @@ $(document).ready(function(){
 	window.local = function() {
 
 
-		var canvas = document.getElementById("mandelbrot");
-		canvas.width = canvas.height = options.size;
-		canvas.style.width = canvas.style.height+ "px";
+		ctx = window.canvasInit(options.size);
 
-		var ctx = canvas.getContext("2d");
+		console.log("Computing ----------------");
 
-		console.log("Rendering ----------------");
-		ctx.fillStyle = "#000000";
-		ctx.fillRect(0,0,options.size,options.size);
-
-
-
-		//Initially make the image data
-		var data = ctx.getImageData(0,0,options.size,options.size);
-
+		//Size of each
 		each = ((options.size * options.size) / options.parallelCores);
 
 		var data1 = ctx.getImageData(0,0,options.size,options.size);
 
-		para = [];
-
 		window.startTime = new Date().getTime();
 		for(var j = 0; j < options.parallelCores; j++){
-			var start = (j * each );
-			var end = start + each;
 
 			//Parameters to pass
 			pass = {
-				start:start,
-				end:end,
-				size:options.size
+				start: (j * each ),
+				end: (j * each ) + each,
+				size:options.size,
+				num: j
 			};
 
 			r = Parallel.spawn(julia, pass);
-			r.me = j;
-
 
 			// Fetch the remote reference and log the result when it's complete
 			r.fetch(function (result) {
@@ -132,10 +136,7 @@ $(document).ready(function(){
 					ctx.putImageData(data1,0,0);
 				}
 
-
-				var end = new Date().getTime();
-				console.log("Done:", end - window.startTime);
-
+				console.log("Done:", result.num , result.time);
 
 			});
 		}
@@ -145,9 +146,10 @@ $(document).ready(function(){
 
 	var socket = io.connect('http://parrallel-juila-sets.192.168.1.6.xip.io:8080');
 	socket.on('connect', function (data) {
-		console.log("I've connected");
+
+		//Now we need to register (Todo, can we combine with connect above?)
 		socket.emit('register', '', function (data) {
-      		console.log("I am:",data); // data will be 'woot'
+			options.distributedID = data;
    		});
 	});
 
@@ -155,12 +157,28 @@ $(document).ready(function(){
 
 		console.log("connections",data);
 		//Update the distributed cores amount to let the user know whats going on
-		window.options.distributedCores = data.total;
+		options.distributedCores = data.total;
 	});
 
+	/* ----------------------------
+	Now been asked to compute, lets go
+	----------------------------*/
 	socket.on("compute", function(data){
 
-		console.log("compute",data);
+		//If a distributed ID has been set
+		if (options.distributedID.length){
+
+			//Find the index within the available list
+			//Ok, now we have found the index, we need to work out
+			index = data.connections[options.distributedID];
+
+			console.log("compute",data);
+
+			ctx = window.canvasInit(options.size);
+
+
+
+		}
 
 	});
 
