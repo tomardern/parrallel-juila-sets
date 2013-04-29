@@ -9,6 +9,7 @@ app.listen(8080);
 
 counter = 0;
 connections = [];
+requester = {};
 
 
 /* --------------------------------------------------
@@ -65,7 +66,6 @@ io.sockets.on('connection', function (socket) {
   /* ----------------------------
   On Request to compute
   ----------------------------*/
-  requester = {};
   socket.on("request", function(data){
     requester = this;
 
@@ -82,6 +82,18 @@ io.sockets.on('connection', function (socket) {
     io.sockets.emit('compute', payload);
 
   });
+
+  /* ----------------------------
+  On data response
+  ----------------------------*/
+  socket.on("response", function(data){
+
+    requester.emit("results", data);
+
+  });
+
+
+
 
 
 

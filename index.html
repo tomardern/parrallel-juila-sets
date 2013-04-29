@@ -124,6 +124,19 @@ $(document).ready(function(){
 
 		console.log(options.type, "Core:",result.num,"Start:", result.start, "End:",result.end, "Time:", result.time);
 
+		//Need to send results back to the socket.io server
+		if (options.type == "distributed") {
+
+			//Now we need to register (Todo, can we combine with connect above?)
+			socket.emit('response', result, function (data) {});
+
+
+		}
+
+
+
+
+
 	};
 
 
@@ -208,6 +221,9 @@ $(document).ready(function(){
 	----------------------------*/
 	socket.on("compute", function(data){
 
+		//Update the context so that we know what we are working in
+		window.canvasInit(options.size);
+
 		//If a distributed ID has been set
 		if (options.distributedID.length){
 
@@ -227,8 +243,6 @@ $(document).ready(function(){
 			start = (index * each);
 			end = (start + each);
 
-			//Update the context so that we know what we are working in
-			window.canvasInit(options.size);
 
 			//Compute from the beginning to the end
 			window.compute(start, end, window.render);
@@ -237,6 +251,25 @@ $(document).ready(function(){
 
 	});
 
+
+	socket.on("results", function(result){
+
+
+		//Get the current image data
+		current = options.ctx.getImageData(0,0,options.size,options.size);
+
+		//Merge into correct object
+		for(at in result.data){
+			current.data[at] = result.data[at];
+		}
+
+		if (options.showRender) {
+			options.ctx.putImageData(current,0,0);
+		}
+
+		console.log("results!", result);
+
+	});
 
 
 
