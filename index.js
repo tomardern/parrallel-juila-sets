@@ -33,14 +33,28 @@ io.sockets.on('connection', function (socket) {
     //If we are registering
     if (status) {
       socket.number = "c" + counter++;
-      connections.push(socket.number);
+
+      //Now store the socket in an array
+      connections.push({
+        num: socket.number,
+        socket: socket
+      });
 
       console.log(socket.number + " Registered. " + connections.length + " connected");
     }
 
-    //If we are disabling
+    //If we are disabling, we need to remove the socket
     else if (socket.number.length) {
-      connections.splice(connections.indexOf(socket.number),1);
+
+      //Remove the one from the array
+      newConnections = [];
+      for(i=0; i < connections.length; i++){
+        if (connections[i].num != socket.number){
+          newConnections.push(connections[i]);
+        }
+      }
+      connections = newConnections;
+
       console.log(socket.number + " Unregistered. " + connections.length + " connected");
       socket.number = "";
     }
@@ -70,16 +84,31 @@ io.sockets.on('connection', function (socket) {
     requester = this;
 
     //TODO, calculate required start/end points
+    //So first, lets figure out start/end points
+    console.log("-------------------------------");
 
-    //Now we need to sort out who gets what
-    payload = {size: data.size, connections: {}, total: connections.length};
-    for(i=0;i<connections.length;i++){
-      payload.connections[connections[i]] = i;
+    //Loop though all the connections
+    for(i=0;i < connections.length; i++){
+      //Size for each connected device
+      each = ((data.size * data.size) / connections.length);
+
+      //Starting point for this socket
+      start = parseInt(i * each);
+      end = parseInt(start + each);
+
+      //Send to the socket required
+      connections[i].socket.emit('compute',{
+        size: data.size,
+        start: start,
+        end: end
+      });
+
+
     }
 
 
-    //Send to all other sockets
-    io.sockets.emit('compute', payload);
+
+
 
   });
 

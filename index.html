@@ -109,6 +109,9 @@ $(document).ready(function(){
 	----------------------------*/
 	window.render = function(result){
 
+
+
+
 		//Get the current image data
 		current = options.ctx.getImageData(0,0,options.size,options.size);
 
@@ -122,7 +125,7 @@ $(document).ready(function(){
 		}
 
 
-		console.log(options.type, "Core:",result.num,"Start:", result.start, "End:",result.end, "Time:", result.time);
+		console.log(options.type, "Client:", result.client, "Core:",result.core,"Start:", result.start, "End:",result.end, "Time:", result.time);
 
 		//Need to send results back to the socket.io server
 		if (options.type == "distributed") {
@@ -155,7 +158,8 @@ $(document).ready(function(){
 				start: parseInt((j * each ) + start),
 				end: parseInt((j * each ) + start + each),
 				size: options.size,
-				num: j
+				client: options.distributedID,
+				core:  j
 			};
 
 			//Spawn a worker, fetch data on compleation
@@ -190,8 +194,8 @@ $(document).ready(function(){
 
 
 
-
-	var socket = io.connect('http://parrallel-juila-sets.192.168.1.6.xip.io:8080');
+	var server = 'http://parrallel-juila-sets.192.168.1.3.xip.io:8080';
+	var socket = io.connect(server);
 	socket.on('connect', function (data) {
 
 		//Now we need to register (Todo, can we combine with connect above?)
@@ -221,6 +225,8 @@ $(document).ready(function(){
 	----------------------------*/
 	socket.on("compute", function(data){
 
+		console.log(data);
+
 		//Update the context so that we know what we are working in
 		window.canvasInit(options.size);
 
@@ -229,23 +235,11 @@ $(document).ready(function(){
 
 			options.type = "distributed";
 
-
 			//Update the sizing options
 			options.size = data.size;
 
-			//Ok, now we have found the index, we need to work out
-			index = data.connections[options.distributedID];
-
-			//Size for each connected device
-			each = ((data.size * data.size) / data.total);
-
-			//Starting point for this socket
-			start = (index * each);
-			end = (start + each);
-
-
 			//Compute from the beginning to the end
-			window.compute(start, end, window.render);
+			window.compute(data.start, data.end, window.render);
 
 		}
 
@@ -256,7 +250,7 @@ $(document).ready(function(){
 
 
 		//Get the current image data
-		current = options.ctx.getImageData(0,0,options.size,options.size);
+		/*current = options.ctx.getImageData(0,0,options.size,options.size);
 
 		//Merge into correct object
 		for(at in result.data){
@@ -264,8 +258,8 @@ $(document).ready(function(){
 		}
 
 		if (options.showRender) {
-			options.ctx.putImageData(current,0,0);
-		}
+			options.ctx.putImageData(result,0,0);
+		} */
 
 		console.log("results!", result);
 
