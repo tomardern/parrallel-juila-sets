@@ -7,8 +7,14 @@
 <!-- http://www.nihilogic.dk/labs/javascript_canvas_fractals/ -->
 </head>
 <body>
+<canvas id="drawarea" ></canvas>
 
-<canvas id="drawarea"></canvas>
+
+<table id="output" style="width:500px;">
+
+
+
+</table>
 
 
 <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.min.js"></script>
@@ -35,10 +41,12 @@ $(document).ready(function(){
 
 	  this.ctx = {}; //Context storage
 	  this.type = ""; //Type of render (ie local or distributed)
-
+	  this.expecting = 0;
 
 	  this.size = 400;
 	  this.showRender = true;
+
+
 
 	  this.isAvailable = true;
 	  this.distributedCores = 0;
@@ -48,7 +56,7 @@ $(document).ready(function(){
 	  };
 
 
-	 this.parallelCores = 1;
+	 this.parallelCores = 4;
 	  this.computeLocal = function(){
 	  	window.local();
 	  };
@@ -99,6 +107,8 @@ $(document).ready(function(){
 
 		options.ctx = ctx;
 
+		$("#output").html("");
+
 		return ctx;
 	};
 
@@ -126,6 +136,11 @@ $(document).ready(function(){
 
 
 		console.log(options.type, "Client:", result.client, "Core:",result.core,"Start:", result.start, "End:",result.end, "Time:", result.time);
+
+
+		/* $("#output").append("<tr><td>" + options.type + "</td><td>" + result.client + "</td><td>" + result.core + "</td><td>" + result.start+ "</td><td>" + result.end+ "</td><td>" + result.time+ "</td></tr>"); */
+
+
 
 		//Need to send results back to the socket.io server
 		if (options.type == "distributed") {
@@ -246,6 +261,8 @@ $(document).ready(function(){
 	});
 
 
+
+
 	socket.on("results", function(result){
 
 
@@ -261,13 +278,37 @@ $(document).ready(function(){
 			options.ctx.putImageData(result,0,0);
 		} */
 
-		console.log("results!", result);
+		options.expecting--;
+		console.log("results!", options.expecting, result.client + "-" + result.core);
+
+
+		$("#output").append("<tr><td>remote</td><td>" + result.client + "</td><td>" + result.core + "</td><td>" + result.start+ "</td><td>" + result.end+ "</td><td>" + result.time+ "</td></tr>");
+
+
+
+
+
+		if (!options.expecting){
+
+			ended = new Date().getTime();
+			total = ended - started;
+
+		$("#output").append("<tr><td>completed</td><td>" + total + "</td><td></td><td></td><td></td><td></td></tr>");
+		}
+
+
+
 
 	});
 
 
 
 	window.distributed = function(){
+
+		started = new Date().getTime();
+
+
+		options.expecting = prompt("Expected Cores",window.options.distributedCores * 4);
 
 		//Firstly, lets send out options to the socket.io server
 

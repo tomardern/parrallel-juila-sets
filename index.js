@@ -9,8 +9,9 @@ app.listen(8080);
 
 counter = 0;
 connections = [];
-requester = {};
-
+initiator = {};
+started = 0;
+recieved = 0;
 
 /* --------------------------------------------------
 When a user connects to the socket.io
@@ -81,11 +82,12 @@ io.sockets.on('connection', function (socket) {
   On Request to compute
   ----------------------------*/
   socket.on("request", function(data){
-    requester = this;
+    initiator = this;
 
     //TODO, calculate required start/end points
     //So first, lets figure out start/end points
-    console.log("-------------------------------");
+
+    started = new Date().getTime();
 
     //Loop though all the connections
     for(i=0;i < connections.length; i++){
@@ -116,8 +118,9 @@ io.sockets.on('connection', function (socket) {
   On data response
   ----------------------------*/
   socket.on("response", function(data){
+    initiator.emit("results", data);
+    recieved++;
 
-    requester.emit("results", data);
 
   });
 
