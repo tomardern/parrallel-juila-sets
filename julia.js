@@ -32,7 +32,10 @@ function julia(attr){
 
 
 	startTime = new Date().getTime();
-	for(i = start; i < end; i ++) {
+	start = attr.offsetStart;
+	gap = attr.gap;
+
+	for(i = start; i < end; i = i + gap) {
 		var offset = i*4;
 
 		px = (i % w );
@@ -85,5 +88,5 @@ function julia(attr){
 	var end = new Date().getTime();
 
 
-	return {data: data, client: attr.client, core: attr.core, time: end - startTime, start: attr.start , end: attr.end};
+	return {data: data, client: attr.client, core: attr.core, offset: attr.offsetStart, gap: attr.gap, time: end - startTime};
 }

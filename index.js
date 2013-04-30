@@ -7,7 +7,7 @@ app.listen(8080);
 
 
 
-counter = 0;
+counter = 1;
 connections = [];
 initiator = {};
 started = 0;
@@ -91,18 +91,15 @@ io.sockets.on('connection', function (socket) {
 
     //Loop though all the connections
     for(i=0;i < connections.length; i++){
-      //Size for each connected device
-      each = ((data.size * data.size) / connections.length);
 
-      //Starting point for this socket
-      start = parseInt(i * each);
-      end = parseInt(start + each);
+      console.log(i);
 
       //Send to the socket required
       connections[i].socket.emit('compute',{
         size: data.size,
-        start: start,
-        end: end
+        start: 0, //Always start from 0 now
+        end: data.size * data.size,
+        client: i
       });
 
 

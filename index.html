@@ -46,6 +46,7 @@ $(document).ready(function(){
 	  this.size = 400;
 	  this.showRender = true;
 
+	  this.clientNumber = 0;
 
 
 	  this.isAvailable = true;
@@ -161,20 +162,31 @@ $(document).ready(function(){
 	/* ----------------------------
 	Computes a set area
 	----------------------------*/
-	window.compute = function(start, end, callback){
+	window.compute = function(start, end, callback, client){
 
 
-		each = (end - start) / options.parallelCores;
+		console.log("ID",options.distributedID,"client",client);
+
+		if (options.type == "local"){
+			cores = options.parallelCores;
+		} else {
+			cores = options.distributedCores;
+		}
+
+
 
 		for(var j = 0; j < options.parallelCores; j++){
 
 			//Parameters to pass
 			pass = {
-				start: parseInt((j * each ) + start),
-				end: parseInt((j * each ) + start + each),
+				start: start,
+				end: end,
 				size: options.size,
-				client: options.distributedID,
-				core:  j
+				clientNumber: client,
+				client: options.distributedID, //Distributed ID
+				core:  j, //What core number we are,
+				offsetStart: (client * 4) + j,
+				gap: cores
 			};
 
 			//Spawn a worker, fetch data on compleation
@@ -199,7 +211,7 @@ $(document).ready(function(){
 		options.ctx = window.canvasInit(options.size);
 
 		//Compute from the beginning to the end
-		window.compute(0, options.size * options.size, window.render);
+		window.compute(0, options.size * options.size, window.render,0);
 
 	};
 
@@ -222,7 +234,7 @@ $(document).ready(function(){
 
 	socket.on("connections", function(data){
 		//Update the distributed cores amount to let the user know whats going on
-		options.distributedCores = data.total;
+		options.distributedCores = (data.total * 4);
 	});
 
 	//If the availability changes
@@ -254,7 +266,7 @@ $(document).ready(function(){
 			options.size = data.size;
 
 			//Compute from the beginning to the end
-			window.compute(data.start, data.end, window.render);
+			window.compute(data.start, data.end, window.render, data.client);
 
 		}
 
@@ -282,7 +294,7 @@ $(document).ready(function(){
 		console.log("results!", options.expecting, result.client + "-" + result.core);
 
 
-		$("#output").append("<tr><td>remote</td><td>" + result.client + "</td><td>" + result.core + "</td><td>" + result.start+ "</td><td>" + result.end+ "</td><td>" + result.time+ "</td></tr>");
+		$("#output").append("<tr><td>remote</td><td>" + result.client + "</td><td>" + result.core + "</td><td>" + result.offset+ "</td><td>" + result.gap + "</td><td>" + result.time+ "</td></tr>");
 
 
 
@@ -308,7 +320,7 @@ $(document).ready(function(){
 		started = new Date().getTime();
 
 
-		options.expecting = prompt("Expected Cores",window.options.distributedCores * 4);
+		options.expecting = prompt("Expected Cores",window.options.distributedCores);
 
 		//Firstly, lets send out options to the socket.io server
 
